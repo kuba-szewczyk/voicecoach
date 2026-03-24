@@ -1,6 +1,10 @@
 <script lang="ts">
   export let pitchRange: { low: number; high: number }
   export let effortBaseline: { mean: number; std: number }
+  export let extremes: {
+    low: { pitchMedian: number; effortMean: number }
+    high: { pitchMedian: number; effortMean: number }
+  }
   export let onConfirm: () => void
   export let onRecalibrate: () => void
 </script>
@@ -8,30 +12,56 @@
 <div class="confirm">
   <h2>Your Voice Profile</h2>
 
-  <div class="metric">
-    <span class="metric-label">Pitch Range</span>
-    <div class="metric-value">
-      <span class="hz">{pitchRange.low}</span>
-      <span class="sep">&ndash;</span>
-      <span class="hz">{pitchRange.high}</span>
-      <span class="unit">Hz</span>
+  <!-- Pitch spectrum visualization -->
+  <div class="spectrum">
+    <span class="spectrum-label">Pitch Spectrum</span>
+    <div class="spectrum-bar">
+      <div class="zone low-zone">
+        <span class="zone-value">{extremes.low.pitchMedian}</span>
+        <span class="zone-label">Low</span>
+      </div>
+      <div class="zone target-zone">
+        <span class="zone-value">{pitchRange.low} &ndash; {pitchRange.high}</span>
+        <span class="zone-label">Target</span>
+      </div>
+      <div class="zone high-zone">
+        <span class="zone-value">{extremes.high.pitchMedian}</span>
+        <span class="zone-label">High</span>
+      </div>
     </div>
-    <p class="metric-desc">Your comfortable speaking frequency range</p>
+    <div class="spectrum-unit">Hz</div>
   </div>
 
-  <div class="metric">
-    <span class="metric-label">Effort Baseline</span>
-    <div class="metric-value">
-      <span class="hz">{effortBaseline.mean.toFixed(1)}</span>
-      <span class="unit">dB</span>
-      <span class="std">&plusmn; {effortBaseline.std.toFixed(1)}</span>
+  <!-- Effort comparison -->
+  <div class="effort-comparison">
+    <span class="spectrum-label">Vocal Effort (H1-H2)</span>
+    <div class="effort-bars">
+      <div class="effort-item">
+        <div class="effort-bar-track">
+          <div class="effort-bar-fill relaxed" style="width: {Math.min(100, Math.max(10, (effortBaseline.mean + 5) * 5))}%"></div>
+        </div>
+        <span class="effort-label green">Relaxed: {effortBaseline.mean.toFixed(1)} dB</span>
+      </div>
+      <div class="effort-item">
+        <div class="effort-bar-track">
+          <div class="effort-bar-fill low-effort" style="width: {Math.min(100, Math.max(10, (extremes.low.effortMean + 5) * 5))}%"></div>
+        </div>
+        <span class="effort-label amber">Low voice: {extremes.low.effortMean.toFixed(1)} dB</span>
+      </div>
+      <div class="effort-item">
+        <div class="effort-bar-track">
+          <div class="effort-bar-fill high-effort" style="width: {Math.min(100, Math.max(10, (extremes.high.effortMean + 5) * 5))}%"></div>
+        </div>
+        <span class="effort-label red">Strained: {extremes.high.effortMean.toFixed(1)} dB</span>
+      </div>
     </div>
-    <p class="metric-desc">This is what your relaxed voice sounds like</p>
   </div>
 
-  <p class="note">During practice, you'll see green when your pitch and effort stay near these values.</p>
+  <div class="summary">
+    <p>Your <strong class="green">comfortable voice</strong> will be the target for daily practice. The app will alert you if you drift toward the <strong class="amber">low</strong> or <strong class="red">strained</strong> zones.</p>
+  </div>
 
-  <button on:click={onConfirm}>Use These Settings</button>
+  <button on:click={onConfirm}>Use This Profile</button>
   <button class="secondary" on:click={onRecalibrate}>Recalibrate</button>
 </div>
 
@@ -51,7 +81,7 @@
     color: #f1f5f9;
   }
 
-  .metric {
+  .spectrum, .effort-comparison {
     width: 100%;
     padding: 16px;
     background: #1e293b;
@@ -59,54 +89,104 @@
     border: 1px solid #334155;
   }
 
-  .metric-label {
-    font-size: 0.75rem;
+  .spectrum-label {
+    display: block;
+    font-size: 0.7rem;
     font-weight: 600;
     color: #64748b;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    margin-bottom: 10px;
   }
 
-  .metric-value {
+  .spectrum-bar {
     display: flex;
-    align-items: baseline;
+    gap: 4px;
+    height: 56px;
+  }
+
+  .zone {
+    flex: 1;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
-    gap: 6px;
+    gap: 2px;
+  }
+
+  .low-zone { background: rgba(245, 158, 11, 0.15); border: 1px solid rgba(245, 158, 11, 0.3); }
+  .target-zone { background: rgba(34, 197, 94, 0.15); border: 1px solid rgba(34, 197, 94, 0.3); flex: 1.5; }
+  .high-zone { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
+
+  .zone-value {
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .low-zone .zone-value { color: #f59e0b; }
+  .target-zone .zone-value { color: #22c55e; }
+  .high-zone .zone-value { color: #ef4444; }
+
+  .zone-label {
+    font-size: 0.65rem;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+
+  .spectrum-unit {
+    font-size: 0.7rem;
+    color: #475569;
     margin-top: 4px;
   }
 
-  .hz {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #22c55e;
+  .effort-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
-  .sep {
-    font-size: 1.25rem;
-    color: #64748b;
+  .effort-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
   }
 
-  .unit {
-    font-size: 0.875rem;
-    color: #64748b;
+  .effort-bar-track {
+    height: 8px;
+    background: #0f172a;
+    border-radius: 4px;
+    overflow: hidden;
   }
 
-  .std {
-    font-size: 0.875rem;
-    color: #64748b;
+  .effort-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.3s;
   }
 
-  .metric-desc {
-    margin: 6px 0 0;
-    font-size: 0.8rem;
-    color: #94a3b8;
+  .relaxed { background: #22c55e; }
+  .low-effort { background: #f59e0b; }
+  .high-effort { background: #ef4444; }
+
+  .effort-label {
+    font-size: 0.75rem;
+    text-align: left;
   }
 
-  .note {
+  .green { color: #22c55e; }
+  .amber { color: #f59e0b; }
+  .red { color: #ef4444; }
+
+  .summary p {
     margin: 0;
     font-size: 0.8rem;
-    color: #64748b;
-    max-width: 280px;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .summary strong {
+    font-weight: 600;
   }
 
   button {

@@ -22,6 +22,10 @@
   let screen: Screen = ($wordList.length > 0 && $targetPitchRange !== null && $effortBaseline !== null) ? 'home' : 'onboarding'
   let pendingPitchRange: { low: number; high: number } | null = null
   let pendingEffortBaseline: { mean: number; std: number } | null = null
+  let pendingExtremes: {
+    low: { pitchMedian: number; effortMean: number }
+    high: { pitchMedian: number; effortMean: number }
+  } | null = null
 </script>
 
 <main>
@@ -50,14 +54,16 @@
       onComplete={(result) => {
         pendingPitchRange = result.pitchRange
         pendingEffortBaseline = result.effortBaseline
+        pendingExtremes = result.extremes
         screen = 'calibrate-confirm'
       }}
       onCancel={() => { screen = 'home' }}
     />
-  {:else if screen === 'calibrate-confirm' && pendingPitchRange && pendingEffortBaseline}
+  {:else if screen === 'calibrate-confirm' && pendingPitchRange && pendingEffortBaseline && pendingExtremes}
     <CalibrationConfirm
       pitchRange={pendingPitchRange}
       effortBaseline={pendingEffortBaseline}
+      extremes={pendingExtremes}
       onConfirm={() => {
         targetPitchRange.set(pendingPitchRange)
         effortBaseline.set(pendingEffortBaseline)

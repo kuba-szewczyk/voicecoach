@@ -9,6 +9,10 @@
   let step: 'words' | 'calibrate' | 'confirm' = 'words'
   let pendingPitchRange: { low: number; high: number } | null = null
   let pendingEffortBaseline: { mean: number; std: number } | null = null
+  let pendingExtremes: {
+    low: { pitchMedian: number; effortMean: number }
+    high: { pitchMedian: number; effortMean: number }
+  } | null = null
 
   function onWordsDone() {
     if ($wordList.length > 0) {
@@ -19,9 +23,14 @@
   function onCalibrationComplete(result: {
     pitchRange: { low: number; high: number }
     effortBaseline: { mean: number; std: number }
+    extremes: {
+      low: { pitchMedian: number; effortMean: number }
+      high: { pitchMedian: number; effortMean: number }
+    }
   }) {
     pendingPitchRange = result.pitchRange
     pendingEffortBaseline = result.effortBaseline
+    pendingExtremes = result.extremes
     step = 'confirm'
   }
 
@@ -29,7 +38,7 @@
     if (pendingPitchRange && pendingEffortBaseline) {
       targetPitchRange.set(pendingPitchRange)
       effortBaseline.set(pendingEffortBaseline)
-      effortThreshold.set(Math.round(pendingEffortBaseline.std * 15) / 10) // 1.5 * std
+      effortThreshold.set(Math.round(pendingEffortBaseline.std * 15) / 10)
     }
     onComplete()
   }
@@ -55,10 +64,11 @@
       onComplete={onCalibrationComplete}
       onCancel={() => { step = 'words' }}
     />
-  {:else if step === 'confirm' && pendingPitchRange && pendingEffortBaseline}
+  {:else if step === 'confirm' && pendingPitchRange && pendingEffortBaseline && pendingExtremes}
     <CalibrationConfirm
       pitchRange={pendingPitchRange}
       effortBaseline={pendingEffortBaseline}
+      extremes={pendingExtremes}
       onConfirm={onConfirm}
       onRecalibrate={onRecalibrate}
     />
