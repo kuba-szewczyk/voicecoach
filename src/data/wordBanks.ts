@@ -1,54 +1,44 @@
 export type Complexity = 'short' | 'medium' | 'long'
 
-export const WORD_BANKS: Record<Complexity, string[]> = {
-  short: [
-    'hello', 'water', 'open', 'easy', 'calm',
-    'home', 'light', 'warm', 'soft', 'kind',
-    'blue', 'green', 'clear', 'cool', 'flow',
-    'rest', 'moon', 'sun', 'rain', 'breeze',
-    'hope', 'smile', 'peace', 'dream', 'wave',
-    'tree', 'lake', 'stone', 'earth', 'air',
-    'time', 'love', 'gold', 'wind', 'seed',
-    'cloud', 'leaf', 'hill', 'song', 'bell',
-  ],
-  medium: [
-    'morning', 'gentle', 'garden', 'river', 'sunset',
-    'window', 'silver', 'meadow', 'feather', 'simple',
-    'music', 'ocean', 'golden', 'forest', 'mountain',
-    'pillow', 'blanket', 'lantern', 'harvest', 'dolphin',
-    'balance', 'summer', 'autumn', 'winter', 'journey',
-    'candle', 'silence', 'flower', 'rainbow', 'velvet',
-    'anchor', 'whisper', 'compass', 'timber', 'crystal',
-    'ember', 'harbor', 'cherry', 'willow', 'shadow',
-  ],
-  long: [
-    'good morning everyone', 'have a wonderful day',
-    'the weather is lovely', 'a walk in the garden',
-    'thank you very much', 'the sun is shining bright',
-    'a cup of warm tea', 'reading a good book',
-    'the leaves are falling', 'waves on the shoreline',
-    'a quiet afternoon', 'the birds are singing',
-    'a gentle summer breeze', 'the mountain is peaceful',
-    'flowers in the meadow', 'a clear blue sky today',
-    'the candle flickers softly', 'walking along the river',
-    'the harvest moon is rising', 'a blanket of fresh snow',
-    'listening to the rainfall', 'the forest is so quiet',
-    'a golden sunset evening', 'the stars are out tonight',
-  ],
-}
-
 export const COMPLEXITY_LABELS: Record<Complexity, { label: string; description: string }> = {
-  short: { label: 'Short', description: '1-2 syllable words' },
-  medium: { label: 'Medium', description: 'Longer words' },
-  long: { label: 'Long', description: 'Phrases & sentences' },
+  short: { label: 'Short', description: 'Single words' },
+  medium: { label: 'Medium', description: '2–3 word phrases' },
+  long: { label: 'Long', description: '4+ word phrases' },
 }
 
 /**
- * Get a shuffled list of words for a session, combining
- * pre-populated bank with any user custom words.
+ * Classify a word or phrase into a complexity level by word count.
+ *   1 word  → short
+ *   2-3 words → medium
+ *   4+ words  → long
  */
-export function getSessionWords(complexity: Complexity, customWords: string[]): string[] {
-  const bank = [...WORD_BANKS[complexity], ...customWords]
+export function classifyEntry(entry: string): Complexity {
+  const wordCount = entry.trim().split(/\s+/).length
+  if (wordCount <= 1) return 'short'
+  if (wordCount <= 3) return 'medium'
+  return 'long'
+}
+
+/**
+ * Classify a flat list of entries into the three complexity buckets.
+ */
+export function classifyAll(entries: string[]): Record<Complexity, string[]> {
+  const result: Record<Complexity, string[]> = { short: [], medium: [], long: [] }
+  for (const entry of entries) {
+    const trimmed = entry.trim()
+    if (trimmed.length > 0) {
+      result[classifyEntry(trimmed)].push(trimmed)
+    }
+  }
+  return result
+}
+
+/**
+ * Get a shuffled list of words for a session from the given complexity bucket.
+ */
+export function getSessionWords(allWords: string[], complexity: Complexity): string[] {
+  const classified = classifyAll(allWords)
+  const bank = [...classified[complexity]]
   // Fisher-Yates shuffle
   for (let i = bank.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));

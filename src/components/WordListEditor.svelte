@@ -1,11 +1,19 @@
 <script lang="ts">
-  import { customWords } from '../store/settings'
-  import { WORD_BANKS, COMPLEXITY_LABELS, type Complexity } from '../data/wordBanks'
+  import { wordPool } from '../store/settings'
+  import { classifyAll, classifyEntry, COMPLEXITY_LABELS, type Complexity } from '../data/wordBanks'
 
   export let onDone: (() => void) | null = null
 
   let newText = ''
-  let previewComplexity: Complexity = 'short'
+  let previewTab: Complexity = 'short'
+
+  $: classified = classifyAll($wordPool)
+  $: counts = {
+    short: classified.short.length,
+    medium: classified.medium.length,
+    long: classified.long.length,
+    total: $wordPool.length,
+  }
 
   function addWords() {
     const entries = newText
@@ -13,63 +21,59 @@
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
     if (entries.length > 0) {
-      customWords.update((list) => [...list, ...entries])
+      wordPool.update((list) => [...list, ...entries])
       newText = ''
     }
   }
 
-  function removeCustomWord(index: number) {
-    customWords.update((list) => list.filter((_, i) => i !== index))
+  function removeWord(word: string) {
+    wordPool.update((list) => {
+      const idx = list.indexOf(word)
+      return idx >= 0 ? [...list.slice(0, idx), ...list.slice(idx + 1)] : list
+    })
+  }
+
+  function clearAll() {
+    wordPool.set([])
   }
 </script>
 
 <div class="editor">
   <div class="header-row">
-    <h2>Word Pool</h2>
+    <h2>Word Pool ({counts.total})</h2>
     {#if onDone}
       <button class="back-btn" on:click={onDone}>Done</button>
     {/if}
   </div>
 
-  <!-- Pre-populated bank preview -->
+  <p class="hint">Words are auto-sorted by length: single words → short, 2–3 words → medium, 4+ words → long.</p>
+
+  <!-- Classified word browser -->
   <div class="section">
-    <h3>Built-in Words</h3>
     <div class="complexity-tabs">
       {#each (['short', 'medium', 'long'] as Complexity[]) as c}
         <button
           class="tab"
-          class:active={previewComplexity === c}
-          on:click={() => { previewComplexity = c }}
+          class:active={previewTab === c}
+          on:click={() => { previewTab = c }}
         >
           {COMPLEXITY_LABELS[c].label}
-          <span class="count">{WORD_BANKS[c].length}</span>
+          <span class="count">{classified[c].length}</span>
         </button>
       {/each}
     </div>
-    <div class="word-cloud">
-      {#each WORD_BANKS[previewComplexity].slice(0, 12) as w}
-        <span class="word-chip">{w}</span>
-      {/each}
-      {#if WORD_BANKS[previewComplexity].length > 12}
-        <span class="word-chip dim">+{WORD_BANKS[previewComplexity].length - 12} more</span>
-      {/if}
-    </div>
-  </div>
 
-  <!-- Custom words -->
-  <div class="section">
-    <h3>Your Custom Words</h3>
-    {#if $customWords.length > 0}
-      <div class="custom-list">
-        {#each $customWords as w, i}
-          <div class="custom-item">
+    {#if classified[previewTab].length > 0}
+      <div class="word-list">
+        {#each classified[previewTab] as w}
+          <div class="word-item">
             <span>{w}</span>
-            <button class="remove-btn" on:click={() => removeCustomWord(i)}>x</button>
+            <button class="remove-btn" on:click={() => removeWord(w)}>x</button>
           </div>
         {/each}
       </div>
     {:else}
-      <p class="empty">No custom words added yet. Your custom words will be mixed into every session.</p>
+      <p class="empty">No {COMPLEXITY_LABELS[previewTab].label.toLowerCase()} entries yet.</p>
     {/if}
   </div>
 
@@ -78,12 +82,17 @@
     <h3>Add Words</h3>
     <textarea
       bind:value={newText}
-      placeholder={"Enter one word or phrase per line"}
-      rows="4"
+      placeholder={"hello\ngood morning\nthank you very much\nthe sun is shining today"}
+      rows="5"
     ></textarea>
-    <button class="add-btn" on:click={addWords} disabled={newText.trim().length === 0}>
-      Add to Pool
-    </button>
+    <div class="add-row">
+      <button class="add-btn" on:click={addWords} disabled={newText.trim().length === 0}>
+        Add to Pool
+      </button>
+      {#if counts.total > 0}
+        <button class="clear-btn" on:click={clearAll}>Clear All</button>
+      {/if}
+    </div>
   </div>
 </div>
 
@@ -91,7 +100,7 @@
   .editor {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: 16px;
     width: 100%;
     padding: 0 0 20px;
   }
@@ -113,6 +122,13 @@
     font-size: 0.85rem;
     color: #94a3b8;
     font-weight: 600;
+  }
+
+  .hint {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748b;
+    line-height: 1.4;
   }
 
   .back-btn {
@@ -161,31 +177,15 @@
     opacity: 0.6;
   }
 
-  .word-cloud {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  .word-chip {
-    padding: 4px 10px;
-    background: #1e293b;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    color: #f1f5f9;
-  }
-
-  .word-chip.dim {
-    color: #475569;
-  }
-
-  .custom-list {
+  .word-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
+    max-height: 200px;
+    overflow-y: auto;
   }
 
-  .custom-item {
+  .word-item {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -215,6 +215,7 @@
     font-size: 0.8rem;
     color: #475569;
     font-style: italic;
+    padding: 12px 0;
   }
 
   textarea {
@@ -234,8 +235,14 @@
     color: #475569;
   }
 
-  .add-btn {
+  .add-row {
+    display: flex;
+    gap: 8px;
     margin-top: 8px;
+  }
+
+  .add-btn {
+    flex: 1;
     padding: 10px 20px;
     border-radius: 8px;
     border: none;
@@ -249,5 +256,15 @@
   .add-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .clear-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #475569;
+    background: transparent;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    cursor: pointer;
   }
 </style>

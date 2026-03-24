@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { targetPitchRange, effortBaseline, sessionDuration, wordComplexity, customWords } from '../store/settings'
-  import { COMPLEXITY_LABELS, WORD_BANKS, type Complexity } from '../data/wordBanks'
+  import { targetPitchRange, effortBaseline, sessionDuration, wordComplexity, wordPool } from '../store/settings'
+  import { COMPLEXITY_LABELS, classifyAll, type Complexity } from '../data/wordBanks'
   import DailyTracker from './DailyTracker.svelte'
 
   export let onStart: () => void
@@ -17,7 +17,10 @@
   $: sessionDuration.set(selectedDuration)
   $: wordComplexity.set(selectedComplexity)
   $: hasCalibration = $targetPitchRange !== null && $effortBaseline !== null
-  $: wordCount = WORD_BANKS[selectedComplexity].length + $customWords.length
+  $: classified = classifyAll($wordPool)
+  $: selectedCount = classified[selectedComplexity].length
+  $: hasWords = $wordPool.length > 0
+  $: canStart = hasCalibration && selectedCount > 0
 </script>
 
 <div class="home">
@@ -46,7 +49,7 @@
   <div class="picker">
     <div class="picker-header">
       <span class="label-text" id="complexity-label">Word complexity</span>
-      <button class="link" on:click={onEditWords}>Manage words ({wordCount})</button>
+      <button class="link" on:click={onEditWords}>Manage words ({$wordPool.length})</button>
     </div>
     <div class="picker-options" role="radiogroup" aria-labelledby="complexity-label">
       {#each complexities as c}
@@ -56,7 +59,7 @@
           on:click={() => { selectedComplexity = c }}
         >
           <span class="picker-label">{COMPLEXITY_LABELS[c].label}</span>
-          <span class="picker-desc">{COMPLEXITY_LABELS[c].description}</span>
+          <span class="picker-desc">{classified[c].length} entries</span>
         </button>
       {/each}
     </div>
@@ -78,12 +81,22 @@
     </div>
   </div>
 
-  <button class="start-btn" on:click={onStart} disabled={!hasCalibration}>
+  <button class="start-btn" on:click={onStart} disabled={!canStart}>
     Start Practice
   </button>
 
-  {#if !hasCalibration}
-    <p class="hint">Calibrate your voice to begin.</p>
+  {#if !canStart}
+    <p class="hint">
+      {#if !hasCalibration && !hasWords}
+        Calibrate your voice and add words to begin.
+      {:else if !hasCalibration}
+        Calibrate your voice to begin.
+      {:else if !hasWords}
+        Add words to your pool to begin.
+      {:else if selectedCount === 0}
+        No {COMPLEXITY_LABELS[selectedComplexity].label.toLowerCase()} entries — pick another level or add words.
+      {/if}
+    </p>
   {/if}
 </div>
 
