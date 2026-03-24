@@ -34,13 +34,15 @@ export const effortBaseline = persistedStore<{ mean: number; std: number } | nul
 
 export const effortThreshold = persistedStore<number>('voicecoach:effortThreshold', 3)
 
-// Flat word pool — auto-classified into short/medium/long by word count
-export const wordPool = persistedStore<string[]>('voicecoach:wordPool', [])
+// Three separate word pools managed by the user
+export const wordPools = persistedStore<Record<Complexity, string[]>>('voicecoach:wordPools', {
+  short: [],
+  medium: [],
+  long: [],
+})
 
-// Selected word complexity for sessions
 export const wordComplexity = persistedStore<Complexity>('voicecoach:wordComplexity', 'short')
 
 export const sessionDuration = persistedStore<number>('voicecoach:sessionDuration', 5)
 
-// Daily session completion tracker — array of ISO date strings (YYYY-MM-DD)
 export const completedDays = persistedStore<string[]>('voicecoach:completedDays', [])

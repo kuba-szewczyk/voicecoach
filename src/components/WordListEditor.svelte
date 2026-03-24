@@ -1,19 +1,14 @@
 <script lang="ts">
-  import { wordPool } from '../store/settings'
-  import { classifyAll, classifyEntry, COMPLEXITY_LABELS, type Complexity } from '../data/wordBanks'
+  import { wordPools } from '../store/settings'
+  import { COMPLEXITY_LABELS, type Complexity } from '../data/wordBanks'
 
   export let onDone: (() => void) | null = null
+  export let initialTab: Complexity = 'short'
 
+  let activeTab: Complexity = initialTab
   let newText = ''
-  let previewTab: Complexity = 'short'
 
-  $: classified = classifyAll($wordPool)
-  $: counts = {
-    short: classified.short.length,
-    medium: classified.medium.length,
-    long: classified.long.length,
-    total: $wordPool.length,
-  }
+  $: currentWords = $wordPools[activeTab]
 
   function addWords() {
     const entries = newText
@@ -21,76 +16,80 @@
       .map((s) => s.trim())
       .filter((s) => s.length > 0)
     if (entries.length > 0) {
-      wordPool.update((list) => [...list, ...entries])
+      wordPools.update((pools) => ({
+        ...pools,
+        [activeTab]: [...pools[activeTab], ...entries],
+      }))
       newText = ''
     }
   }
 
-  function removeWord(word: string) {
-    wordPool.update((list) => {
-      const idx = list.indexOf(word)
-      return idx >= 0 ? [...list.slice(0, idx), ...list.slice(idx + 1)] : list
-    })
+  function removeWord(index: number) {
+    wordPools.update((pools) => ({
+      ...pools,
+      [activeTab]: pools[activeTab].filter((_, i) => i !== index),
+    }))
   }
 
-  function clearAll() {
-    wordPool.set([])
+  function clearPool() {
+    wordPools.update((pools) => ({
+      ...pools,
+      [activeTab]: [],
+    }))
   }
 </script>
 
 <div class="editor">
   <div class="header-row">
-    <h2>Word Pool ({counts.total})</h2>
+    <h2>Word Pools</h2>
     {#if onDone}
       <button class="back-btn" on:click={onDone}>Done</button>
     {/if}
   </div>
 
-  <p class="hint">Words are auto-sorted by length: single words → short, 2–3 words → medium, 4+ words → long.</p>
-
-  <!-- Classified word browser -->
-  <div class="section">
-    <div class="complexity-tabs">
-      {#each (['short', 'medium', 'long'] as Complexity[]) as c}
-        <button
-          class="tab"
-          class:active={previewTab === c}
-          on:click={() => { previewTab = c }}
-        >
-          {COMPLEXITY_LABELS[c].label}
-          <span class="count">{classified[c].length}</span>
-        </button>
-      {/each}
-    </div>
-
-    {#if classified[previewTab].length > 0}
-      <div class="word-list">
-        {#each classified[previewTab] as w}
-          <div class="word-item">
-            <span>{w}</span>
-            <button class="remove-btn" on:click={() => removeWord(w)}>x</button>
-          </div>
-        {/each}
-      </div>
-    {:else}
-      <p class="empty">No {COMPLEXITY_LABELS[previewTab].label.toLowerCase()} entries yet.</p>
-    {/if}
+  <!-- Pool tabs -->
+  <div class="tabs">
+    {#each (['short', 'medium', 'long'] as Complexity[]) as c}
+      <button
+        class="tab"
+        class:active={activeTab === c}
+        on:click={() => { activeTab = c }}
+      >
+        {COMPLEXITY_LABELS[c].label}
+        <span class="count">{$wordPools[c].length}</span>
+      </button>
+    {/each}
   </div>
 
-  <!-- Add new words -->
-  <div class="section">
-    <h3>Add Words</h3>
+  <p class="tab-desc">{COMPLEXITY_LABELS[activeTab].description}</p>
+
+  <!-- Current pool contents -->
+  {#if currentWords.length > 0}
+    <div class="word-list">
+      {#each currentWords as w, i}
+        <div class="word-item">
+          <span>{w}</span>
+          <button class="remove-btn" on:click={() => removeWord(i)}>x</button>
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <p class="empty">No {COMPLEXITY_LABELS[activeTab].label.toLowerCase()} entries yet.</p>
+  {/if}
+
+  <!-- Add words -->
+  <div class="add-section">
     <textarea
       bind:value={newText}
-      placeholder={"hello\ngood morning\nthank you very much\nthe sun is shining today"}
+      placeholder={"Paste words here, one per line..."}
       rows="5"
     ></textarea>
     <div class="add-row">
       <button class="add-btn" on:click={addWords} disabled={newText.trim().length === 0}>
-        Add to Pool
+        Add to {COMPLEXITY_LABELS[activeTab].label}
       </button>
-      {#if counts.total > 0}
-        <button class="clear-btn" on:click={clearAll}>Clear All</button>
+      {#if currentWords.length > 0}
+        <button class="clear-btn" on:click={clearPool}>Clear</button>
       {/if}
     </div>
   </div>
@@ -100,7 +99,7 @@
   .editor {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     width: 100%;
     padding: 0 0 20px;
   }
@@ -117,20 +116,6 @@
     color: #f1f5f9;
   }
 
-  h3 {
-    margin: 0 0 8px;
-    font-size: 0.85rem;
-    color: #94a3b8;
-    font-weight: 600;
-  }
-
-  .hint {
-    margin: 0;
-    font-size: 0.8rem;
-    color: #64748b;
-    line-height: 1.4;
-  }
-
   .back-btn {
     background: none;
     border: none;
@@ -140,30 +125,25 @@
     padding: 4px 8px;
   }
 
-  .section {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .complexity-tabs {
+  .tabs {
     display: flex;
     gap: 6px;
-    margin-bottom: 8px;
   }
 
   .tab {
     flex: 1;
-    padding: 6px 8px;
-    border-radius: 6px;
+    padding: 8px;
+    border-radius: 8px;
     border: 1px solid #334155;
     background: #1e293b;
     color: #94a3b8;
-    font-size: 0.8rem;
+    font-size: 0.85rem;
+    font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 6px;
   }
 
   .tab.active {
@@ -174,14 +154,27 @@
 
   .count {
     font-size: 0.7rem;
-    opacity: 0.6;
+    background: #334155;
+    padding: 1px 6px;
+    border-radius: 10px;
+  }
+
+  .tab.active .count {
+    background: #3b82f6;
+    color: white;
+  }
+
+  .tab-desc {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748b;
   }
 
   .word-list {
     display: flex;
     flex-direction: column;
     gap: 4px;
-    max-height: 200px;
+    max-height: 220px;
     overflow-y: auto;
   }
 
@@ -189,7 +182,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 6px 12px;
+    padding: 8px 12px;
     background: #1e293b;
     border-radius: 6px;
     font-size: 0.85rem;
@@ -203,7 +196,7 @@
     font-size: 0.8rem;
     cursor: pointer;
     padding: 2px 6px;
-    opacity: 0.6;
+    opacity: 0.5;
   }
 
   .remove-btn:hover {
@@ -215,7 +208,13 @@
     font-size: 0.8rem;
     color: #475569;
     font-style: italic;
-    padding: 12px 0;
+    padding: 16px 0;
+  }
+
+  .add-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
   }
 
   textarea {
@@ -238,7 +237,6 @@
   .add-row {
     display: flex;
     gap: 8px;
-    margin-top: 8px;
   }
 
   .add-btn {
