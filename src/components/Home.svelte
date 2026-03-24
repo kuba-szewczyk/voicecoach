@@ -23,12 +23,12 @@
 
   <div class="status">
     <div class="status-item" class:ready={hasWords}>
-      <span class="indicator">{hasWords ? '&#10003;' : '!'}</span>
+      <span class="indicator">{hasWords ? '✓' : '!'}</span>
       <span>Word list ({$wordList.length} words)</span>
       <button class="link" on:click={onEditWords}>{hasWords ? 'Edit' : 'Add'}</button>
     </div>
     <div class="status-item" class:ready={hasCalibration}>
-      <span class="indicator">{hasCalibration ? '&#10003;' : '!'}</span>
+      <span class="indicator">{hasCalibration ? '✓' : '!'}</span>
       <span>
         {#if hasCalibration && $targetPitchRange && $effortBaseline}
           Pitch {$targetPitchRange.low}&ndash;{$targetPitchRange.high} Hz &middot; Effort {$effortBaseline.mean.toFixed(1)} dB

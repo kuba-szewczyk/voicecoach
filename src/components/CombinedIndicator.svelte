@@ -6,7 +6,7 @@
 </script>
 
 <div class="indicator" class:good={allGood} class:off={!allGood}>
-  <span class="icon">{allGood ? '&#10003;' : '!'}</span>
+  <span class="icon">{allGood ? '✓' : '!'}</span>
   <span class="label">{allGood ? 'On target' : pitchInRange ? 'Effort' : effortInRange ? 'Pitch' : 'Adjust'}</span>
 </div>
 

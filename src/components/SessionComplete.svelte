@@ -3,7 +3,7 @@
 </script>
 
 <div class="complete">
-  <div class="check">&#10003;</div>
+  <div class="check">✓</div>
   <h2>Session Complete</h2>
   <p>Great work on your practice!</p>
   <button on:click={onDone}>Done</button>
