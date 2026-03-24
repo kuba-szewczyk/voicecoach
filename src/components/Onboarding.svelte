@@ -1,24 +1,17 @@
 <script lang="ts">
-  import WordListEditor from './WordListEditor.svelte'
   import Calibration from './Calibration.svelte'
   import CalibrationConfirm from './CalibrationConfirm.svelte'
-  import { wordList, targetPitchRange, effortBaseline, effortThreshold } from '../store/settings'
+  import { targetPitchRange, effortBaseline, effortThreshold } from '../store/settings'
 
   export let onComplete: () => void
 
-  let step: 'words' | 'calibrate' | 'confirm' = 'words'
+  let step: 'welcome' | 'calibrate' | 'confirm' = 'welcome'
   let pendingPitchRange: { low: number; high: number } | null = null
   let pendingEffortBaseline: { mean: number; std: number } | null = null
   let pendingExtremes: {
     low: { pitchMedian: number; effortMean: number }
     high: { pitchMedian: number; effortMean: number }
   } | null = null
-
-  function onWordsDone() {
-    if ($wordList.length > 0) {
-      step = 'calibrate'
-    }
-  }
 
   function onCalibrationComplete(result: {
     pitchRange: { low: number; high: number }
@@ -42,27 +35,20 @@
     }
     onComplete()
   }
-
-  function onRecalibrate() {
-    step = 'calibrate'
-  }
 </script>
 
 <div class="onboarding">
-  <div class="step-indicator">
-    <span class="step" class:active={step === 'words'} class:done={step !== 'words'}>1</span>
-    <span class="line"></span>
-    <span class="step" class:active={step === 'calibrate'} class:done={step === 'confirm'}>2</span>
-    <span class="line"></span>
-    <span class="step" class:active={step === 'confirm'}>3</span>
-  </div>
-
-  {#if step === 'words'}
-    <WordListEditor onDone={onWordsDone} />
+  {#if step === 'welcome'}
+    <div class="welcome">
+      <h1>VoiceCoach</h1>
+      <p>Daily vocal practice for granuloma recovery. Real-time feedback on pitch and effort to help you speak comfortably.</p>
+      <p class="sub">The app comes with built-in word banks at three complexity levels. Let's start by calibrating your voice.</p>
+      <button on:click={() => { step = 'calibrate' }}>Get Started</button>
+    </div>
   {:else if step === 'calibrate'}
     <Calibration
       onComplete={onCalibrationComplete}
-      onCancel={() => { step = 'words' }}
+      onCancel={() => { step = 'welcome' }}
     />
   {:else if step === 'confirm' && pendingPitchRange && pendingEffortBaseline && pendingExtremes}
     <CalibrationConfirm
@@ -70,7 +56,7 @@
       effortBaseline={pendingEffortBaseline}
       extremes={pendingExtremes}
       onConfirm={onConfirm}
-      onRecalibrate={onRecalibrate}
+      onRecalibrate={() => { step = 'calibrate' }}
     />
   {/if}
 </div>
@@ -80,42 +66,49 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 24px;
     padding: 24px 20px;
+    flex: 1;
   }
 
-  .step-indicator {
+  .welcome {
     display: flex;
-    align-items: center;
-    gap: 0;
-  }
-
-  .step {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    font-size: 0.875rem;
-    font-weight: 600;
-    background: #334155;
+    gap: 16px;
+    text-align: center;
+    flex: 1;
+    padding: 40px 0;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: 2.5rem;
+    font-weight: 800;
+    color: #f1f5f9;
+  }
+
+  p {
+    margin: 0;
+    color: #94a3b8;
+    max-width: 300px;
+    line-height: 1.5;
+  }
+
+  .sub {
+    font-size: 0.85rem;
     color: #64748b;
   }
 
-  .step.active {
-    background: #3b82f6;
-    color: white;
-  }
-
-  .step.done {
+  button {
+    padding: 14px 48px;
+    border-radius: 12px;
+    border: none;
     background: #22c55e;
     color: white;
-  }
-
-  .line {
-    width: 40px;
-    height: 2px;
-    background: #334155;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 12px;
   }
 </style>

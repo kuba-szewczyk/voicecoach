@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { wordList, targetPitchRange, effortBaseline, effortThreshold, sessionDuration } from './store/settings'
+  import { targetPitchRange, effortBaseline, effortThreshold, sessionDuration } from './store/settings'
   import Onboarding from './components/Onboarding.svelte'
   import Home from './components/Home.svelte'
   import Session from './components/Session.svelte'
@@ -19,7 +19,7 @@
     | 'edit-words'
     | 'help'
 
-  let screen: Screen = ($wordList.length > 0 && $targetPitchRange !== null && $effortBaseline !== null) ? 'home' : 'onboarding'
+  let screen: Screen = ($targetPitchRange !== null && $effortBaseline !== null) ? 'home' : 'onboarding'
   let pendingPitchRange: { low: number; high: number } | null = null
   let pendingEffortBaseline: { mean: number; std: number } | null = null
   let pendingExtremes: {

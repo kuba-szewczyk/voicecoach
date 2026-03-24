@@ -1,4 +1,5 @@
 import { writable } from 'svelte/store'
+import type { Complexity } from '../data/wordBanks'
 
 function persistedStore<T>(key: string, initial: T) {
   let stored: string | null = null
@@ -31,10 +32,18 @@ export const effortBaseline = persistedStore<{ mean: number; std: number } | nul
   null,
 )
 
-// Effort threshold: how far from baseline (in dB) before considered "out of range"
-// Default: 1.5 * std, but stored as absolute dB value after calibration
 export const effortThreshold = persistedStore<number>('voicecoach:effortThreshold', 3)
 
-export const wordList = persistedStore<string[]>('voicecoach:wordList', [])
+// User's custom words added on top of pre-populated banks
+export const customWords = persistedStore<string[]>('voicecoach:customWords', [])
+
+// Selected word complexity for sessions
+export const wordComplexity = persistedStore<Complexity>('voicecoach:wordComplexity', 'short')
 
 export const sessionDuration = persistedStore<number>('voicecoach:sessionDuration', 5)
+
+// Daily session completion tracker — array of ISO date strings (YYYY-MM-DD)
+export const completedDays = persistedStore<string[]>('voicecoach:completedDays', [])
+
+// Legacy — kept for migration but no longer primary word source
+export const wordList = persistedStore<string[]>('voicecoach:wordList', [])

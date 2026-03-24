@@ -5,7 +5,8 @@
   import PitchCanvas from './PitchCanvas.svelte'
   import EffortGauge from './EffortGauge.svelte'
   import CombinedIndicator from './CombinedIndicator.svelte'
-  import { wordList } from '../store/settings'
+  import { customWords, wordComplexity } from '../store/settings'
+  import { getSessionWords } from '../data/wordBanks'
 
   export let targetRange: { low: number; high: number }
   export let effortBase: { mean: number; std: number }
@@ -14,7 +15,7 @@
   export let onComplete: () => void
   export let onExit: () => void
 
-  let words = $wordList
+  let words = getSessionWords($wordComplexity, $customWords)
   let wordIndex = 0
   let currentWord = words[0] || ''
   let secondsLeft = durationMinutes * 60

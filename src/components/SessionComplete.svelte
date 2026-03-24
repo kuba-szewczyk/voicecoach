@@ -1,5 +1,15 @@
 <script lang="ts">
+  import { onMount } from 'svelte'
+  import { completedDays } from '../store/settings'
+
   export let onDone: () => void
+
+  onMount(() => {
+    const today = new Date().toISOString().split('T')[0]
+    if (!$completedDays.includes(today)) {
+      completedDays.update((days) => [...days, today])
+    }
+  })
 </script>
 
 <div class="complete">
