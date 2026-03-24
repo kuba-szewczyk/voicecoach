@@ -1,21 +1,25 @@
 <script lang="ts">
-  import { wordList, targetPitchRange, sessionDuration } from '../store/settings'
+  import { wordList, targetPitchRange, effortBaseline, sessionDuration } from '../store/settings'
 
   export let onStart: () => void
   export let onEditWords: () => void
   export let onCalibrate: () => void
+  export let onHelp: () => void
 
   const durations = [2, 5, 10]
   let selectedDuration = $sessionDuration
 
   $: sessionDuration.set(selectedDuration)
   $: hasWords = $wordList.length > 0
-  $: hasCalibration = $targetPitchRange !== null
+  $: hasCalibration = $targetPitchRange !== null && $effortBaseline !== null
   $: canStart = hasWords && hasCalibration
 </script>
 
 <div class="home">
-  <h1>VoiceCoach</h1>
+  <div class="title-row">
+    <h1>VoiceCoach</h1>
+    <button class="help-btn" on:click={onHelp}>?</button>
+  </div>
 
   <div class="status">
     <div class="status-item" class:ready={hasWords}>
@@ -26,8 +30,8 @@
     <div class="status-item" class:ready={hasCalibration}>
       <span class="indicator">{hasCalibration ? '&#10003;' : '!'}</span>
       <span>
-        {#if hasCalibration && $targetPitchRange}
-          Calibrated ({$targetPitchRange.low}&ndash;{$targetPitchRange.high} Hz)
+        {#if hasCalibration && $targetPitchRange && $effortBaseline}
+          Pitch {$targetPitchRange.low}&ndash;{$targetPitchRange.high} Hz &middot; Effort {$effortBaseline.mean.toFixed(1)} dB
         {:else}
           Not calibrated
         {/if}
@@ -77,11 +81,37 @@
     padding: 32px 20px;
   }
 
+  .title-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+    position: relative;
+  }
+
   h1 {
     margin: 0;
     font-size: 2rem;
     color: #f1f5f9;
     font-weight: 800;
+  }
+
+  .help-btn {
+    position: absolute;
+    right: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid #334155;
+    background: #1e293b;
+    color: #94a3b8;
+    font-size: 0.875rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .status {
@@ -99,7 +129,7 @@
     background: #1e293b;
     border-radius: 8px;
     color: #94a3b8;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .status-item.ready {
@@ -135,6 +165,7 @@
     cursor: pointer;
     font-size: 0.875rem;
     padding: 4px 8px;
+    flex-shrink: 0;
   }
 
   .duration-picker {

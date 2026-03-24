@@ -1,19 +1,37 @@
 <script lang="ts">
-  export let range: { low: number; high: number }
+  export let pitchRange: { low: number; high: number }
+  export let effortBaseline: { mean: number; std: number }
   export let onConfirm: () => void
   export let onRecalibrate: () => void
 </script>
 
 <div class="confirm">
-  <h2>Your Target Range</h2>
-  <div class="range-display">
-    <span class="hz">{range.low}</span>
-    <span class="sep">&ndash;</span>
-    <span class="hz">{range.high}</span>
-    <span class="unit">Hz</span>
+  <h2>Your Voice Profile</h2>
+
+  <div class="metric">
+    <span class="metric-label">Pitch Range</span>
+    <div class="metric-value">
+      <span class="hz">{pitchRange.low}</span>
+      <span class="sep">&ndash;</span>
+      <span class="hz">{pitchRange.high}</span>
+      <span class="unit">Hz</span>
+    </div>
+    <p class="metric-desc">Your comfortable speaking frequency range</p>
   </div>
-  <p>This is the pitch range your voice was detected at. During practice, the waveform will show green when you stay within this range.</p>
-  <button on:click={onConfirm}>Use This Range</button>
+
+  <div class="metric">
+    <span class="metric-label">Effort Baseline</span>
+    <div class="metric-value">
+      <span class="hz">{effortBaseline.mean.toFixed(1)}</span>
+      <span class="unit">dB</span>
+      <span class="std">&plusmn; {effortBaseline.std.toFixed(1)}</span>
+    </div>
+    <p class="metric-desc">This is what your relaxed voice sounds like</p>
+  </div>
+
+  <p class="note">During practice, you'll see green when your pitch and effort stay near these values.</p>
+
+  <button on:click={onConfirm}>Use These Settings</button>
   <button class="secondary" on:click={onRecalibrate}>Recalibrate</button>
 </div>
 
@@ -33,37 +51,62 @@
     color: #f1f5f9;
   }
 
-  .range-display {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    padding: 20px 32px;
+  .metric {
+    width: 100%;
+    padding: 16px;
     background: #1e293b;
     border-radius: 12px;
     border: 1px solid #334155;
   }
 
+  .metric-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .metric-value {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
   .hz {
-    font-size: 2rem;
+    font-size: 1.75rem;
     font-weight: 700;
     color: #22c55e;
   }
 
   .sep {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     color: #64748b;
   }
 
   .unit {
-    font-size: 1rem;
+    font-size: 0.875rem;
     color: #64748b;
   }
 
-  p {
-    margin: 0;
-    color: #94a3b8;
-    max-width: 300px;
+  .std {
     font-size: 0.875rem;
+    color: #64748b;
+  }
+
+  .metric-desc {
+    margin: 6px 0 0;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  .note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748b;
+    max-width: 280px;
   }
 
   button {

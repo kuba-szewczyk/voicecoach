@@ -1,12 +1,18 @@
 import { PitchDetector as Pitchy } from 'pitchy'
 import { MicInput } from './MicInput'
+import { EffortAnalyser, type EffortData } from './EffortAnalyser'
 
 export interface PitchData {
   hz: number
   clarity: number
 }
 
-export type PitchCallback = (data: PitchData | null) => void
+export interface AudioFrameData {
+  pitch: PitchData | null
+  effort: EffortData
+}
+
+export type AudioFrameCallback = (data: AudioFrameData) => void
 
 const CLARITY_THRESHOLD = 0.9
 const MIN_HZ = 50
@@ -15,14 +21,17 @@ const MAX_HZ = 500
 export class PitchDetector {
   private micInput = new MicInput()
   private workletNode: AudioWorkletNode | null = null
-  private callback: PitchCallback | null = null
+  private effortAnalyser: EffortAnalyser | null = null
+  private callback: AudioFrameCallback | null = null
   private running = false
 
-  async start(callback: PitchCallback) {
+  async start(callback: AudioFrameCallback) {
     this.callback = callback
     this.running = true
 
-    const { audioContext, sourceNode } = await this.micInput.start()
+    const { audioContext, sourceNode, analyserNode } = await this.micInput.start()
+
+    this.effortAnalyser = new EffortAnalyser(analyserNode, audioContext.sampleRate)
 
     await audioContext.audioWorklet.addModule('/audio-processor.worklet.js')
 
@@ -35,15 +44,20 @@ export class PitchDetector {
       const detector = Pitchy.forFloat32Array(samples.length)
       const [hz, clarity] = detector.findPitch(samples, audioContext.sampleRate)
 
+      let pitch: PitchData | null = null
+      let effort: EffortData
+
       if (clarity >= CLARITY_THRESHOLD && hz >= MIN_HZ && hz <= MAX_HZ) {
-        this.callback?.({ hz, clarity })
+        pitch = { hz, clarity }
+        effort = this.effortAnalyser!.analyse(hz)
       } else {
-        this.callback?.(null)
+        effort = this.effortAnalyser!.markInvalid()
       }
+
+      this.callback?.({ pitch, effort })
     }
 
     sourceNode.connect(this.workletNode)
-    // Don't connect worklet to destination — we don't want playback
   }
 
   stop() {
@@ -52,6 +66,8 @@ export class PitchDetector {
       this.workletNode.disconnect()
       this.workletNode = null
     }
+    this.effortAnalyser?.reset()
+    this.effortAnalyser = null
     this.micInput.stop()
     this.callback = null
   }

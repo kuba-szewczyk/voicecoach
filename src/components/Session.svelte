@@ -1,10 +1,15 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte'
-  import { PitchDetector, type PitchData } from '../audio/PitchDetector'
+  import { PitchDetector, type AudioFrameData } from '../audio/PitchDetector'
+  import { isInRange, isEffortInRange } from '../audio/pitchMath'
   import PitchCanvas from './PitchCanvas.svelte'
+  import EffortGauge from './EffortGauge.svelte'
+  import CombinedIndicator from './CombinedIndicator.svelte'
   import { wordList } from '../store/settings'
 
   export let targetRange: { low: number; high: number }
+  export let effortBase: { mean: number; std: number }
+  export let effortThresh: number
   export let durationMinutes: number
   export let onComplete: () => void
   export let onExit: () => void
@@ -15,6 +20,10 @@
   let secondsLeft = durationMinutes * 60
   let paused = false
   let pitch: { hz: number } | null = null
+  let h1h2: number | null = null
+  let effortValid = false
+  let pitchInRange = false
+  let effortInRange = false
   let detector: PitchDetector | null = null
   let timer: ReturnType<typeof setInterval> | null = null
   let tapDebounceTimeout: ReturnType<typeof setTimeout> | null = null
@@ -37,8 +46,13 @@
 
   async function startSession() {
     detector = new PitchDetector()
-    await detector.start((data: PitchData | null) => {
-      pitch = data
+    await detector.start((data: AudioFrameData) => {
+      pitch = data.pitch
+      h1h2 = data.effort.h1h2
+      effortValid = data.effort.valid
+
+      pitchInRange = data.pitch ? isInRange(data.pitch.hz, targetRange.low, targetRange.high) : false
+      effortInRange = data.effort.valid ? isEffortInRange(data.effort.h1h2, effortBase.mean, effortThresh) : false
     })
 
     timer = setInterval(() => {
@@ -62,11 +76,16 @@
       detector?.stop()
       detector = null
       pitch = null
+      h1h2 = null
+      effortValid = false
     } else {
-      // Restart mic on resume
       detector = new PitchDetector()
-      detector.start((data: PitchData | null) => {
-        pitch = data
+      detector.start((data: AudioFrameData) => {
+        pitch = data.pitch
+        h1h2 = data.effort.h1h2
+        effortValid = data.effort.valid
+        pitchInRange = data.pitch ? isInRange(data.pitch.hz, targetRange.low, targetRange.high) : false
+        effortInRange = data.effort.valid ? isEffortInRange(data.effort.h1h2, effortBase.mean, effortThresh) : false
       })
     }
   }
@@ -79,7 +98,6 @@
     detector = null
   }
 
-  // Handle app backgrounding
   function handleVisibility() {
     if (document.hidden && !paused) {
       togglePause()
@@ -102,13 +120,26 @@
     <button class="exit-btn" on:click={() => { cleanup(); onExit() }}>
       &larr;
     </button>
+    <CombinedIndicator {pitchInRange} {effortInRange} />
     <div class="timer" class:paused>{formatTime(secondsLeft)}</div>
     <button class="pause-btn" on:click={togglePause}>
       {paused ? '▶' : '⏸'}
     </button>
   </div>
 
-  <PitchCanvas {targetRange} {pitch} />
+  <div class="visualization">
+    <div class="waveform-area">
+      <PitchCanvas {targetRange} {pitch} />
+    </div>
+    <div class="gauge-area">
+      <EffortGauge
+        baseline={effortBase.mean}
+        threshold={effortThresh}
+        {h1h2}
+        valid={effortValid}
+      />
+    </div>
+  </div>
 
   {#if paused}
     <div class="paused-overlay">
@@ -127,7 +158,7 @@
   .session {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     height: 100%;
     padding: 16px;
   }
@@ -136,10 +167,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
   }
 
   .timer {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     font-weight: 700;
     color: #f1f5f9;
     font-variant-numeric: tabular-nums;
@@ -161,6 +193,22 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .visualization {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+  }
+
+  .waveform-area {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .gauge-area {
+    flex-shrink: 0;
   }
 
   .word-area {
@@ -174,7 +222,7 @@
     border-radius: 12px;
     border: 1px solid #334155;
     cursor: pointer;
-    min-height: 200px;
+    min-height: 180px;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
   }

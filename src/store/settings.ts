@@ -26,6 +26,15 @@ export const targetPitchRange = persistedStore<{ low: number; high: number } | n
   null,
 )
 
+export const effortBaseline = persistedStore<{ mean: number; std: number } | null>(
+  'voicecoach:effortBaseline',
+  null,
+)
+
+// Effort threshold: how far from baseline (in dB) before considered "out of range"
+// Default: 1.5 * std, but stored as absolute dB value after calibration
+export const effortThreshold = persistedStore<number>('voicecoach:effortThreshold', 3)
+
 export const wordList = persistedStore<string[]>('voicecoach:wordList', [])
 
 export const sessionDuration = persistedStore<number>('voicecoach:sessionDuration', 5)

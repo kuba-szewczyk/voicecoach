@@ -1,9 +1,18 @@
+const FFT_SIZE = 4096
+
+export interface AudioNodes {
+  audioContext: AudioContext
+  sourceNode: MediaStreamAudioSourceNode
+  analyserNode: AnalyserNode
+}
+
 export class MicInput {
   private stream: MediaStream | null = null
   private audioContext: AudioContext | null = null
   private sourceNode: MediaStreamAudioSourceNode | null = null
+  private analyserNode: AnalyserNode | null = null
 
-  async start(): Promise<{ audioContext: AudioContext; sourceNode: MediaStreamAudioSourceNode }> {
+  async start(): Promise<AudioNodes> {
     this.stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         echoCancellation: false,
@@ -15,17 +24,30 @@ export class MicInput {
 
     this.audioContext = new AudioContext({ latencyHint: 0 } as AudioContextOptions)
 
-    // iOS Safari requires resume from user gesture
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume()
     }
 
     this.sourceNode = this.audioContext.createMediaStreamSource(this.stream)
 
-    return { audioContext: this.audioContext, sourceNode: this.sourceNode }
+    // AnalyserNode for FFT-based harmonic analysis (H1-H2)
+    this.analyserNode = this.audioContext.createAnalyser()
+    this.analyserNode.fftSize = FFT_SIZE
+    this.analyserNode.smoothingTimeConstant = 0 // We do our own EMA smoothing
+    this.sourceNode.connect(this.analyserNode)
+
+    return {
+      audioContext: this.audioContext,
+      sourceNode: this.sourceNode,
+      analyserNode: this.analyserNode,
+    }
   }
 
   stop() {
+    if (this.analyserNode) {
+      this.analyserNode.disconnect()
+      this.analyserNode = null
+    }
     if (this.sourceNode) {
       this.sourceNode.disconnect()
       this.sourceNode = null
@@ -42,5 +64,9 @@ export class MicInput {
 
   getAudioContext(): AudioContext | null {
     return this.audioContext
+  }
+
+  getAnalyserNode(): AnalyserNode | null {
+    return this.analyserNode
   }
 }

@@ -2,12 +2,13 @@
   import WordListEditor from './WordListEditor.svelte'
   import Calibration from './Calibration.svelte'
   import CalibrationConfirm from './CalibrationConfirm.svelte'
-  import { wordList, targetPitchRange } from '../store/settings'
+  import { wordList, targetPitchRange, effortBaseline, effortThreshold } from '../store/settings'
 
   export let onComplete: () => void
 
   let step: 'words' | 'calibrate' | 'confirm' = 'words'
-  let pendingRange: { low: number; high: number } | null = null
+  let pendingPitchRange: { low: number; high: number } | null = null
+  let pendingEffortBaseline: { mean: number; std: number } | null = null
 
   function onWordsDone() {
     if ($wordList.length > 0) {
@@ -15,14 +16,20 @@
     }
   }
 
-  function onCalibrationComplete(range: { low: number; high: number }) {
-    pendingRange = range
+  function onCalibrationComplete(result: {
+    pitchRange: { low: number; high: number }
+    effortBaseline: { mean: number; std: number }
+  }) {
+    pendingPitchRange = result.pitchRange
+    pendingEffortBaseline = result.effortBaseline
     step = 'confirm'
   }
 
   function onConfirm() {
-    if (pendingRange) {
-      targetPitchRange.set(pendingRange)
+    if (pendingPitchRange && pendingEffortBaseline) {
+      targetPitchRange.set(pendingPitchRange)
+      effortBaseline.set(pendingEffortBaseline)
+      effortThreshold.set(Math.round(pendingEffortBaseline.std * 15) / 10) // 1.5 * std
     }
     onComplete()
   }
@@ -48,11 +55,12 @@
       onComplete={onCalibrationComplete}
       onCancel={() => { step = 'words' }}
     />
-  {:else if step === 'confirm' && pendingRange}
+  {:else if step === 'confirm' && pendingPitchRange && pendingEffortBaseline}
     <CalibrationConfirm
-      range={pendingRange}
-      {onConfirm}
-      {onRecalibrate}
+      pitchRange={pendingPitchRange}
+      effortBaseline={pendingEffortBaseline}
+      onConfirm={onConfirm}
+      onRecalibrate={onRecalibrate}
     />
   {/if}
 </div>

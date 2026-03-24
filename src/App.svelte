@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { wordList, targetPitchRange, sessionDuration } from './store/settings'
+  import { wordList, targetPitchRange, effortBaseline, effortThreshold, sessionDuration } from './store/settings'
   import Onboarding from './components/Onboarding.svelte'
   import Home from './components/Home.svelte'
   import Session from './components/Session.svelte'
@@ -7,6 +7,7 @@
   import Calibration from './components/Calibration.svelte'
   import CalibrationConfirm from './components/CalibrationConfirm.svelte'
   import WordListEditor from './components/WordListEditor.svelte'
+  import Help from './components/Help.svelte'
 
   type Screen =
     | 'onboarding'
@@ -16,9 +17,11 @@
     | 'calibrate'
     | 'calibrate-confirm'
     | 'edit-words'
+    | 'help'
 
-  let screen: Screen = ($wordList.length > 0 && $targetPitchRange !== null) ? 'home' : 'onboarding'
-  let pendingRange: { low: number; high: number } | null = null
+  let screen: Screen = ($wordList.length > 0 && $targetPitchRange !== null && $effortBaseline !== null) ? 'home' : 'onboarding'
+  let pendingPitchRange: { low: number; high: number } | null = null
+  let pendingEffortBaseline: { mean: number; std: number } | null = null
 </script>
 
 <main>
@@ -29,10 +32,13 @@
       onStart={() => { screen = 'session' }}
       onEditWords={() => { screen = 'edit-words' }}
       onCalibrate={() => { screen = 'calibrate' }}
+      onHelp={() => { screen = 'help' }}
     />
-  {:else if screen === 'session' && $targetPitchRange}
+  {:else if screen === 'session' && $targetPitchRange && $effortBaseline}
     <Session
       targetRange={$targetPitchRange}
+      effortBase={$effortBaseline}
+      effortThresh={$effortThreshold}
       durationMinutes={$sessionDuration}
       onComplete={() => { screen = 'session-complete' }}
       onExit={() => { screen = 'home' }}
@@ -41,17 +47,31 @@
     <SessionComplete onDone={() => { screen = 'home' }} />
   {:else if screen === 'calibrate'}
     <Calibration
-      onComplete={(range) => { pendingRange = range; screen = 'calibrate-confirm' }}
+      onComplete={(result) => {
+        pendingPitchRange = result.pitchRange
+        pendingEffortBaseline = result.effortBaseline
+        screen = 'calibrate-confirm'
+      }}
       onCancel={() => { screen = 'home' }}
     />
-  {:else if screen === 'calibrate-confirm' && pendingRange}
+  {:else if screen === 'calibrate-confirm' && pendingPitchRange && pendingEffortBaseline}
     <CalibrationConfirm
-      range={pendingRange}
-      onConfirm={() => { targetPitchRange.set(pendingRange); screen = 'home' }}
+      pitchRange={pendingPitchRange}
+      effortBaseline={pendingEffortBaseline}
+      onConfirm={() => {
+        targetPitchRange.set(pendingPitchRange)
+        effortBaseline.set(pendingEffortBaseline)
+        if (pendingEffortBaseline) {
+          effortThreshold.set(Math.round(pendingEffortBaseline.std * 15) / 10)
+        }
+        screen = 'home'
+      }}
       onRecalibrate={() => { screen = 'calibrate' }}
     />
   {:else if screen === 'edit-words'}
     <WordListEditor onDone={() => { screen = 'home' }} />
+  {:else if screen === 'help'}
+    <Help onBack={() => { screen = 'home' }} />
   {/if}
 </main>
 
