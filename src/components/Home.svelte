@@ -1,6 +1,6 @@
 <script lang="ts">
   import { targetPitchRange, effortBaseline, sessionDuration, wordComplexity, wordPools } from '../store/settings'
-  import { COMPLEXITY_LABELS, type Complexity } from '../data/wordBanks'
+  import { COMPLEXITY_LABELS, DEFAULT_POOLS, type Complexity } from '../data/wordBanks'
   import DailyTracker from './DailyTracker.svelte'
 
   export let onStart: () => void
@@ -17,8 +17,8 @@
   $: sessionDuration.set(selectedDuration)
   $: wordComplexity.set(selectedComplexity)
   $: hasCalibration = $targetPitchRange !== null && $effortBaseline !== null
-  $: selectedCount = $wordPools[selectedComplexity].length
-  $: totalWords = $wordPools.short.length + $wordPools.medium.length + $wordPools.long.length
+  $: combinedCount = (c: Complexity) => new Set([...DEFAULT_POOLS[c], ...$wordPools[c]]).size
+  $: selectedCount = combinedCount(selectedComplexity)
   $: canStart = hasCalibration && selectedCount > 0
 </script>
 
@@ -48,7 +48,7 @@
   <div class="picker">
     <div class="picker-header">
       <span class="label-text" id="complexity-label">Word complexity</span>
-      <button class="link" on:click={onEditWords}>Manage words ({totalWords})</button>
+      <button class="link" on:click={onEditWords}>Add words</button>
     </div>
     <div class="picker-options" role="radiogroup" aria-labelledby="complexity-label">
       {#each complexities as c}
@@ -58,7 +58,7 @@
           on:click={() => { selectedComplexity = c }}
         >
           <span class="picker-label">{COMPLEXITY_LABELS[c].label}</span>
-          <span class="picker-desc">{$wordPools[c].length} entries</span>
+          <span class="picker-desc">{combinedCount(c)} entries</span>
         </button>
       {/each}
     </div>
